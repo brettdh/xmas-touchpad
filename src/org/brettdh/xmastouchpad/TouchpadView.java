@@ -29,22 +29,21 @@ public class TouchpadView extends View {
         private float posX;
         private float posY;
         private float radius;
-        private int screenWidth;
+        private int viewWidth;
+        private int viewHeight;
         private int color;
         private Paint paint;
         private TouchpadView parent;
         
         public Orb(TouchpadView parent, float x, float y) {
             this.parent = parent;
-            this.posX = x;
-            this.posY = y;
+            this.viewWidth = parent.getWidth();
+            this.viewHeight = parent.getHeight();
             
             Activity activity = (Activity) parent.getContext();
             Display display = activity.getWindowManager().getDefaultDisplay();
             DisplayMetrics dm = new DisplayMetrics();
             display.getMetrics(dm);
-            
-            this.screenWidth = dm.widthPixels;
             
             float diameterInches = 0.5f;
             this.radius = (dm.xdpi * diameterInches) / 2.0f;
@@ -52,6 +51,8 @@ public class TouchpadView extends View {
             paint = new Paint();
             paint.setColor(Color.WHITE);
             paint.setStyle(Style.FILL);
+            
+            setPosition(x, y);
         }
         
         private final int colors[] = new int[] {
@@ -63,7 +64,7 @@ public class TouchpadView extends View {
             return (a + ((b - a) * proportion));
         }
         
-        /** Returns an interpoloated color, between a and b */
+        /** Returns an interpolated color, between a and b */
         private int interpolateColor(int a, int b, float proportion) {
             float[] hsva = new float[3];
             float[] hsvb = new float[3];
@@ -76,7 +77,7 @@ public class TouchpadView extends View {
         }
           
         private int getColor() {
-            float xPercent = posX / screenWidth;
+            float xPercent = posX / viewWidth;
             int index = (int) Math.floor(xPercent * (colors.length - 1));
             int leftColor = colors[index];
             int rightColor;
@@ -86,7 +87,7 @@ public class TouchpadView extends View {
                 rightColor = colors[index + 1];
             }
             
-            int binWidth = screenWidth / (colors.length - 1);
+            int binWidth = viewWidth / (colors.length - 1);
             int binLeft = binWidth * index;
             int binRight = binLeft + binWidth;
             float proportion = ((float) posX - binLeft) / (binRight - binLeft);
@@ -94,8 +95,31 @@ public class TouchpadView extends View {
         }
         
         public void setPosition(float x, float y) {
+            int oldBulb = getBulb(posY);
+            
             posX = x;
             posY = y;
+            
+            int bulb = getBulb(y);
+            if (oldBulb != bulb) {
+                fadeBulb(oldBulb);
+            }
+            
+            int color = getColor();
+            parent.lights.setColor(bulb, color);
+        }
+        
+        public void fadeBulb() {
+            fadeBulb(posY);
+        }
+        
+        public void fadeBulb(float y) {
+            int bulb = getBulb(y);
+            parent.lights.fade(bulb);
+        }
+
+        private int getBulb(float y) {
+            return (int) (y / (viewHeight / 100));
         }
         
         public void draw(Canvas canvas) {
@@ -109,6 +133,8 @@ public class TouchpadView extends View {
     // map pointer id to orb to show.
     private Map<Integer, Orb> orbs = new HashMap<Integer, Orb>();
     
+    private LightsThread lights;
+    
     public TouchpadView(Context context) {
         this(context, null, 0);
     }
@@ -119,6 +145,8 @@ public class TouchpadView extends View {
     
     public TouchpadView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+        lights = new LightsThread("10.0.2.2");
+        lights.start();
     }
     
     @Override
@@ -134,6 +162,8 @@ public class TouchpadView extends View {
     }
     
     private void removeOrb(int id) {
+        Orb orb = orbs.get(id);
+        orb.fadeBulb();
         orbs.remove(id);
     }
     
@@ -145,7 +175,7 @@ public class TouchpadView extends View {
             case MotionEvent.ACTION_POINTER_DOWN: {
                 int index = ev.getActionIndex();
                 int id = ev.getPointerId(index);
-                addOrb(0, ev.getX(index), ev.getY(index));
+                addOrb(id, ev.getX(index), ev.getY(index));
                 break;
             }
             
@@ -153,7 +183,7 @@ public class TouchpadView extends View {
                 int pointerCount = ev.getPointerCount();
                 for (int i = 0; i < pointerCount; ++i) {
                     int id = ev.getPointerId(i);
-                    Orb orb = orbs.get(i);
+                    Orb orb = orbs.get(id);
                     orb.setPosition(ev.getX(i), ev.getY(i));
                 }
                 break;
