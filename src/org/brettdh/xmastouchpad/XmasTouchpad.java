@@ -12,4 +12,12 @@ public class XmasTouchpad extends Activity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
     }
+    
+    public void updateStatus(final String status) {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                setTitle(status);
+            }
+        });
+    }
 }
