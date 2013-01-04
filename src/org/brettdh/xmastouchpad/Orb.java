@@ -10,12 +10,12 @@ import android.util.DisplayMetrics;
 import android.view.Display;
 
 class Orb {
-    private float posX;
-    private float posY;
+    private float posX = -1.0f;
+    private float posY = -1.0f;
     private float radius;
     private int viewWidth;
     private int viewHeight;
-    private int color;
+    
     private Paint paint;
     private TouchpadView parent;
     
@@ -85,24 +85,29 @@ class Orb {
         posY = y;
         
         int bulb = getBulb(y);
+        int color = getColor();
+
         if (oldBulb != bulb) {
             fadeBulb(oldBulb);
         }
-        
-        int color = getColor();
         parent.lights.setColor(bulb, color);
     }
     
     public void fadeBulb() {
-        fadeBulb(posY);
+        fadeBulb(getBulb(posY));
     }
     
-    public void fadeBulb(float y) {
-        int bulb = getBulb(y);
-        parent.lights.fade(bulb);
+    private void fadeBulb(int bulb) {
+        if (bulb >= 0) {
+            parent.lights.fade(bulb);
+        }
     }
 
     private int getBulb(float y) {
+        if (y < 0.0f) {
+            return -1;
+        }
+        
         int bulb = (int) (y / (viewHeight / 100.0));
         bulb = Math.min(bulb, Bulbs.COUNT - 1);
         bulb = Math.max(bulb, 0);

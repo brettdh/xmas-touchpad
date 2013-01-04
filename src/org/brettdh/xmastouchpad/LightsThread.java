@@ -48,6 +48,8 @@ public class LightsThread extends Thread {
     }
 
     private static final String TAG = "LightsThread";
+
+    private static final long renderIntervalMillis = 15;
     
     private BlockingQueue<Message> queue = new LinkedBlockingQueue<Message>();
     
@@ -62,6 +64,8 @@ public class LightsThread extends Thread {
     private XmasTouchpad activity;
 
     private Timer timer;
+
+    private long nextRender = 0;
     
     public LightsThread(XmasTouchpad activity) {
         this.activity = activity;
@@ -149,9 +153,15 @@ public class LightsThread extends Thread {
 
     private boolean doBulbsUpdate() {
         try {
-            lightsIter.render();
+            if (shouldRender()) {
+                lightsIter.render();
+            }
             
-            Message m = queue.poll(10, TimeUnit.MILLISECONDS);
+            long waitMillis = renderIntervalMillis;
+            if (lightsIter.isEmpty()) {
+                waitMillis = 500;
+            }
+            Message m = queue.poll(waitMillis, TimeUnit.MILLISECONDS);
             if (m != null) {
                 if (m.quit) {
                     return false;
@@ -164,8 +174,7 @@ public class LightsThread extends Thread {
                 } else {
                     int[] color = getColor(m.color);
                     colors[m.bulb] = m.color;
-                    lightsIter.add(Iterator.makeFixedIterator(m.bulb),
-                                   Iterator.makeSolidIterator(color));
+                    bulbs.set(m.bulb, color);
                 }
             }
         } catch (IOException e) {
@@ -174,6 +183,15 @@ public class LightsThread extends Thread {
             return false;
         }
         return true;
+    }
+
+    private boolean shouldRender() {
+        long now = System.currentTimeMillis();
+        if (now >= nextRender) {
+            nextRender = now + renderIntervalMillis;
+            return true;
+        }
+        return false;
     }
 
     public void connect(String hostname) {

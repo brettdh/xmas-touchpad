@@ -94,7 +94,7 @@ public class TouchpadView extends View {
         return true;
     }
 
-    private DashPathEffect dashEffect = new DashPathEffect(new float[]{3,3}, 0);
+    private DashPathEffect dashEffect = new DashPathEffect(new float[]{10,10}, 0);
     
     public void setDrawStyle(Paint paint) {
         paint.setStyle(Style.FILL);
